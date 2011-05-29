@@ -48,53 +48,47 @@ var processRequest = function(args) {
         store = globals[1],
         Tiddler = globals[2];
 
-    if (!memcache) {
+    var callback = function() { // TODO: rename
         getData(memcache, collection_uri, tiddlyweb_cookie, emitter, store,
-                Tiddler, tiddlerTitle, wikify, false);
+            Tiddler, tiddlerTitle, wikify, false);
+    };
+    if (!memcache) {
+        callback();
     } else {
         memcache.get(namespace, function(err, result) {
             if (err) {
                 console.error(err);
                 emitter.emit('output', 'Error getting namespace key ' + err);
-            } else {
-                if (!result) {
-                    result = uuid();
-                    memcache.set(namespace, result, 0, function(err, result) {
-                        if (err) {
-                            console.error(err);
-                        }
-                        if (result) {
-                            return processRequest(args);
-                        } else {
-                            getData(memcache, collection_uri,
-                                tiddlyweb_cookie, emitter, store,
-                                Tiddler, tiddlerTitle, wikify, false);
-                        }
-                    });
-                } else {
-                    var memcacheKey = hashlib.sha1(result + collection_uri);
-                    memcache.get(memcacheKey, function(err, result) {
-                        if (err) {
-                            console.error(err);
-                            emitter.emit('output',
+            } else if (!result) { // set memcache data
+                result = uuid();
+                memcache.set(namespace, result, 0, function(err, result) {
+                    if (err) {
+                        console.error(err);
+                    }
+                    if (result) {
+                        return processRequest(args);
+                    } else {
+                        callback();
+                    }
+                });
+            } else { // get memcache data
+                var memcacheKey = hashlib.sha1(result + collection_uri);
+                memcache.get(memcacheKey, function(err, result) {
+                    if (err) {
+                        console.error(err);
+                        emitter.emit('output',
                                 'Error getting collection key ' + err);
-                        } else {
-                            var data = result;
-                            if (!data) {
-                                getData(memcache, collection_uri,
-                                    tiddlyweb_cookie, emitter, store, Tiddler,
-                                    tiddlerTitle, wikify, memcacheKey);
-                            } else {
-                                console.log('using cache for', collection_uri);
-                                twik.loadRemoteTiddlers(store, Tiddler,
-                                    collection_uri, data);
-                                var output = processData(store, tiddlerTitle,
-                                    wikify);
-                                emitter.emit('output', output);
-                            }
-                        }
-                    });
-                }
+                    } else if (!result) {
+                        callback();
+                    } else {
+                        console.log('using cache for', collection_uri);
+                        twik.loadRemoteTiddlers(store, Tiddler,
+                            collection_uri, result);
+                        var output = processData(store, tiddlerTitle,
+                            wikify);
+                        emitter.emit('output', output);
+                    }
+                });
             }
         });
     }
