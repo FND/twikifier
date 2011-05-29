@@ -82,10 +82,9 @@ var processRequest = function(args) {
                         callback();
                     } else {
                         console.log('using cache for', collection_uri);
-                        twik.loadRemoteTiddlers(store, Tiddler,
-                            collection_uri, result);
-                        var output = processData(store, tiddlerTitle,
-                            wikify);
+                        twik.loadRemoteTiddlers(store, Tiddler, collection_uri,
+                                result);
+                        var output = processData(store, tiddlerTitle, wikify);
                         emitter.emit('output', output);
                     }
                 });
